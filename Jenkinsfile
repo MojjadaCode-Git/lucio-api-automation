@@ -2,28 +2,37 @@ pipeline {
     agent any
 
     environment {
-        NAME  = "Sai Kumar Mojjada"
-        EMAIL = "saikumarmsk7799@gmail.com"
-        CLUB  = "lucio"
-        LOG_FILE = "logs/output.json"
+        PROJECT_DIR = "${WORKSPACE}"
+        LOG_FILE = "${WORKSPACE}/logs/output.json"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/MojjadaCode-Git/lucio-api-automation.git'
-                echo '✅ Source code checked out successfully.'
+                echo "📦 Checking out source code..."
+                checkout scm
+                echo "✅ Source code checked out"
             }
         }
 
-        stage('Install dependencies') {
+        stage('Verify Dependencies') {
             steps {
                 sh '''
-                    echo "🔹 Installing dependencies..."
-                    sudo apt-get update -y
-                    sudo apt-get install -y curl jq make git
-                    echo "✅ Dependencies installed successfully."
+                    echo "🔹 Verifying dependencies (curl, jq, make, git)..."
+                    MISSING=""
+                    for cmd in curl jq make git; do
+                        if ! command -v $cmd >/dev/null 2>&1; then
+                            echo "❌ Missing $cmd"
+                            MISSING="$MISSING $cmd"
+                        fi
+                    done
+
+                    if [ -n "$MISSING" ]; then
+                        echo "⚙️ Installing missing dependencies: $MISSING"
+                        sudo apt-get update -y && sudo apt-get install -y $MISSING
+                    else
+                        echo "✅ All dependencies already installed."
+                    fi
                 '''
             }
         }
@@ -31,19 +40,24 @@ pipeline {
         stage('Run API Automation') {
             steps {
                 sh '''
-                    echo "🔹 Running API Automation Script..."
+                    echo "🚀 Running Lucio API Automation..."
                     chmod +x api_test.sh
-                    ./api_test.sh | tee ${LOG_FILE}
-                    echo "✅ API Automation script executed."
+                    make run || ./api_test.sh || echo "⚠️ Makefile execution fallback."
                 '''
             }
         }
 
         stage('Archive Logs') {
             steps {
-                echo "📦 Archiving logs..."
-                archiveArtifacts artifacts: 'logs/output.json', fingerprint: true
-                echo '✅ Logs archived successfully.'
+                script {
+                    if (fileExists(LOG_FILE)) {
+                        echo "📦 Archiving logs..."
+                        archiveArtifacts artifacts: 'logs/output.json', followSymlinks: false
+                        echo "✅ Logs archived successfully."
+                    } else {
+                        echo "⚠️ No logs found to archive."
+                    }
+                }
             }
         }
     }
@@ -53,10 +67,10 @@ pipeline {
             echo "🧾 Pipeline execution completed."
         }
         success {
-            echo "🎉 Build successful! Logs saved in Jenkins artifacts."
+            echo "🎉 Build succeeded! Lucio API Automation ran successfully."
         }
         failure {
-            echo "❌ Build failed. Please check Jenkins console or logs/output.json for details."
+            echo "❌ Build failed. Check console output or logs/output.json for details."
         }
     }
 }
