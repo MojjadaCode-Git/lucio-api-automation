@@ -13,7 +13,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/MojjadaCode-Git/lucio-api-automation.git'
-                echo '✅ Source code checked out'
+                echo '✅ Source code checked out successfully.'
             }
         }
 
@@ -21,8 +21,8 @@ pipeline {
             steps {
                 sh '''
                     echo "🔹 Installing dependencies..."
-                    apt-get update -y
-                    apt-get install -y curl jq make git
+                    sudo apt-get update -y
+                    sudo apt-get install -y curl jq make git
                     echo "✅ Dependencies installed successfully."
                 '''
             }
@@ -41,6 +41,7 @@ pipeline {
 
         stage('Archive Logs') {
             steps {
+                echo "📦 Archiving logs..."
                 archiveArtifacts artifacts: 'logs/output.json', fingerprint: true
                 echo '✅ Logs archived successfully.'
             }
@@ -52,10 +53,10 @@ pipeline {
             echo "🧾 Pipeline execution completed."
         }
         success {
-            echo "🎉 Build successful!"
+            echo "🎉 Build successful! Logs saved in Jenkins artifacts."
         }
         failure {
-            echo "❌ Build failed. Check console or logs/output.json for details."
+            echo "❌ Build failed. Please check Jenkins console or logs/output.json for details."
         }
     }
 }
